@@ -235,12 +235,12 @@ this.$databaseUnbind('user', () => ({ name: 'unregistered' }))
 ```
 
 ```js
-// default behavior
+// default behavior is to keep current value
 this.$firestoreUnbind('user')
 this.$firestoreUnbind('user', false)
 // this.user === { name: 'Eduardo' }
 
-// using a boolean value for reset to keep current value
+// if you send Boolean true in the reset parameter, the value will change to null
 this.$firestoreUnbind('user', true)
 // this.user === null
 
