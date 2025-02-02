@@ -30,39 +30,46 @@ export default defineEventHandler(async (event) => {
   const adminAuth = getAdminAuth(adminApp)
 
   logger.debug(token ? 'Verifying the token' : 'Deleting the session cookie')
-  const verifiedIdToken = token ? await adminAuth.verifyIdToken(token) : null
+  try {
+    const verifiedIdToken = token ? await adminAuth.verifyIdToken(token) : null
 
-  if (verifiedIdToken) {
-    if (new Date().getTime() / 1_000 - verifiedIdToken.iat > ID_TOKEN_MAX_AGE) {
-      setResponseStatus(event, 301)
-    } else {
-      const cookie = await adminAuth
-        .createSessionCookie(token!, { expiresIn: AUTH_COOKIE_MAX_AGE })
-        .catch((e: any) => {
-          logger.error('Error minting the cookie', e)
-        })
-      if (cookie) {
-        // logger.debug(`minted a session cookie for user ${verifiedIdToken.uid}`)
-        setCookie(event, AUTH_COOKIE_NAME, cookie, {
-          maxAge: AUTH_COOKIE_MAX_AGE,
-          secure: true,
-          httpOnly: true,
-          path: '/',
-          sameSite: 'lax',
-          // add user overrides
-          ...(typeof runtimeConfig.vuefire?.auth?.sessionCookie === 'object'
-            ? runtimeConfig.vuefire?.auth?.sessionCookie
-            : {}),
-        })
-        setResponseStatus(event, 201)
-        return ''
+    if (verifiedIdToken) {
+      if (
+        new Date().getTime() / 1_000 - verifiedIdToken.iat >
+        ID_TOKEN_MAX_AGE
+      ) {
+        setResponseStatus(event, 301)
       } else {
-        setResponseStatus(event, 401)
-        return ''
+        const cookie = await adminAuth
+          .createSessionCookie(token!, { expiresIn: AUTH_COOKIE_MAX_AGE })
+          .catch((e: any) => {
+            logger.error('Error minting the cookie', e)
+          })
+        if (cookie) {
+          // logger.debug(`minted a session cookie for user ${verifiedIdToken.uid}`)
+          setCookie(event, AUTH_COOKIE_NAME, cookie, {
+            maxAge: AUTH_COOKIE_MAX_AGE,
+            secure: true,
+            httpOnly: true,
+            path: '/',
+            sameSite: 'lax',
+            // add user overrides
+            ...(typeof runtimeConfig.vuefire?.auth?.sessionCookie === 'object'
+              ? runtimeConfig.vuefire?.auth?.sessionCookie
+              : {}),
+          })
+          setResponseStatus(event, 201)
+          return ''
+        } else {
+          setResponseStatus(event, 401)
+          return ''
+        }
       }
+    } else {
+      throw new Error('Cannot verify the token')
     }
-  } else {
-    // logger.debug('deleting the session cookie')
+  } catch (error: any) {
+    logger.debug(`[${error.code}] ${error.message}`)
     deleteCookie(event, AUTH_COOKIE_NAME)
     setResponseStatus(event, 204)
   }
