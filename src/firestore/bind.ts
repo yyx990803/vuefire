@@ -30,6 +30,13 @@ import { onSnapshot } from 'firebase/firestore'
 export interface FirestoreRefOptions<TData = unknown>
   extends _DataSourceOptions<TData> {
   /**
+   * Ignores snapshot changes that are coming from the Firestore client cache, defering ref updates until fresh data
+   * is pulled from the server. Useful for pagination scenarios, when using multiple listeners on the same collection
+   * with distinct queries and updating query refs.
+   */
+  ignoreCachedChanges?: boolean
+
+  /**
    * The maximum depth to bind nested refs. A nested ref that isn't bound will stay as the ref path while a bound ref
    * will contain the same data as if the ref was bound directly.
    */
@@ -60,10 +67,16 @@ export interface _FirestoreRefOptionsWithDefaults extends FirestoreRefOptions {
    * @defaultValue `false`
    */
   reset: ResetOption
+
   /**
    * @defaultValue `true`
    */
   wait: boolean
+
+  /**
+   * @defaultValue `false`
+   */
+  ignoreCachedChanges: boolean
 
   /**
    * @defaultValue `2`
@@ -88,6 +101,7 @@ export interface _FirestoreRefOptionsWithDefaults extends FirestoreRefOptions {
 const DEFAULT_OPTIONS: _FirestoreRefOptionsWithDefaults = {
   reset: false,
   wait: true,
+  ignoreCachedChanges: false,
   maxRefDepth: 2,
   converter: firestoreDefaultConverter,
   snapshotOptions: { serverTimestamps: 'estimate' },
@@ -380,8 +394,10 @@ export function bindCollection<T = unknown>(
     // (https://firebase.google.com/docs/firestore/query-data/listen#view_changes_between_snapshots)
 
     const docChanges = snapshot.docChanges(snapshotListenOptions)
+    const ignoreCached: boolean =
+      options.ignoreCachedChanges && snapshot.metadata.fromCache
 
-    if (!isResolved && docChanges.length) {
+    if (!isResolved && docChanges.length && !ignoreCached) {
       // isResolved is only meant to make sure we do the check only once
       isResolved = true
       let count = 0
