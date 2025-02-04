@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
       setResponseStatus(event, 301)
     } else {
       const cookie = await adminAuth
-        .createSessionCookie(token!, { expiresIn: AUTH_COOKIE_MAX_AGE })
+        .createSessionCookie(token!, { expiresIn: AUTH_COOKIE_MAX_AGE * 1_000 })
         .catch((e: any) => {
           logger.error('Error minting the cookie', e)
         })
@@ -73,7 +73,7 @@ export default defineEventHandler(async (event) => {
 
 // these must be within this file because the handler gets inlined in dev mode
 const ID_TOKEN_MAX_AGE = 5 * 60
-const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 5 * 1_000
+const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 5
 // MUST be named session to be kept
 // https://firebase.google.com/docs/hosting/manage-cache#using_cookies
 const AUTH_COOKIE_NAME = '__session'
